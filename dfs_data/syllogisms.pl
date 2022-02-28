@@ -10,7 +10,7 @@ constant(Person) :-
         person(Person).
 
 property(singer(Person)) :- person(Person).
-property(trumpettist(Person)) :- person(Person).
+property(trumpeter(Person)) :- person(Person).
 property(pianist(Person)) :- person(Person).
 
 
@@ -27,11 +27,14 @@ person('nat').
 %%% Hard constraints %%%
 
 % Everyone is *something*, of course you can be multiple things
-constraint(forall(x,or(or(singer(x),trumpettist(x)),pianist(x)))).
+constraint(forall(x,or(or(singer(x),trumpeter(x)),pianist(x)))).
+
+%There are no empty domains
+constraint(exists(x,exists(y,exists(z, and(pianist(x), and(trumpeter(y), singer(z))))))).
+
 
 %%% Probabilistic constraints %%%
 
-% Otherwise: coin flip
 probability(_,top,0.5).
 
 %%%%%%%%%%%%%%%%%
@@ -44,16 +47,15 @@ s_simpl(Sem) --> np1(N,A), vp(_,N,_,A,Sem).
 %%%% Constituents %%%%
 
 %% Determiners
-np1(a,A)  --> ['all'], np2(A).
-np1(i,A) --> ['some'], np2(A).
-np1(e,A) --> ['no'], np2(A).
-np1(o, A) --> ['some', 'not'], np2(A).
+np1(a,A)  --> ['All'], np2(A).
+np1(i,A) --> ['Some'], np2(A).
+np1(e,A) --> ['No'], np2(A).
+np1(o,A) --> ['Some_not'], np2(A).
 
 %% Nouns
-np2(trumpettist) --> ['trumpettists'].
+np2(trumpeter) --> ['trumpeters'].
 np2(pianist) --> ['pianists'].
 np2(singer) --> ['singers'].
-
 
 %%%% Main Clause VPs %%%%
 
@@ -66,10 +68,10 @@ vp(are,N,B,A,Sem)    --> [] , np2(B),
           %%%% Semantics %%%%
 
 % Subject Semantics
-sbj_semantics(i,[chet,ella,miles,bill]).
-sbj_semantics(a,[chet,ella,miles,bill]).
-sbj_semantics(e,[chet,ella,miles,bill]).
-sbj_semantics(o,[chet,ella,miles,bill]).
+sbj_semantics(i,[chet,ella,miles,bill,sarah,nat]).
+sbj_semantics(a,[chet,ella,miles,bill,sarah,nat]).
+sbj_semantics(e,[chet,ella,miles,bill,sarah,nat]).
+sbj_semantics(o,[chet,ella,miles,bill,sarah,nat]).
 
 
 %%% Build Terms %%%
@@ -94,13 +96,13 @@ build_terms(Pred,[S|Ss],'a',A,[Sem0|T]) :- !,
 build_terms(Pred,[S|Ss],'e',A,[Sem0|T]) :- !,
         First =.. [A,S],
         Second =.. [Pred,S],
-        Sem0 =.. [imp,First,Second],
+        Sem0 =.. [imp,First,neg(Second)],
         build_terms(Pred,Ss,'e',A,T).
 % SOME A are NOT B
 build_terms(Pred,[S|Ss],'o',A,[Sem0|T]) :- !,
         First =.. [A,S],
         Second =.. [Pred,S],
-        Sem0 =.. [imp,First,neg(Second)],
+        Sem0 =.. [and,First,neg(Second)],
         build_terms(Pred,Ss,'o',A,T).
 
 %%% Premiss %%%
@@ -109,7 +111,7 @@ premiss([H|T], Result, 'i') :-
         qtf_semantics([H|T], Result, 'i').
 premiss([H|T], Result, 'a') :-
         qtf_semantics([H|T], Result, 'a').
-premiss([H|T], neg(Result), 'e') :-
+premiss([H|T], Result, 'e') :-
         qtf_semantics([H|T], Result, 'e').
 premiss([H|T], Result, 'o') :-
         qtf_semantics([H|T], Result, 'o').
@@ -132,16 +134,19 @@ qtf_semantics([H|T], and(Conj1,Conjuncts), 'e') :-
         Conj1 = H,
         qtf_semantics(T, Conjuncts, 'e').
 
-qtf_semantics([H|T], and(Conj1,Conjuncts), 'o') :-
+qtf_semantics([H|T], or(Conj1,Conjuncts), 'o') :-
         Conj1 = H,
         qtf_semantics(T, Conjuncts, 'o').
 
 
-gen_data(SentOut, SpaceOut) :-
-        dfs_sample_models(150, Ms),
+gen_data(SentOut, SpaceOut, Size) :-
+        dfs_sample_models(Size, Ms),
         % One cannot read and sleep at the same time
         foreach(person(Person),
-                dfs_prior_probability(or(or(singer(Person),trumpettist(Person)),pianist(Person)),Ms,1)),
+                dfs_prior_probability(or(or(singer(Person),trumpeter(Person)),pianist(Person)),Ms,1)),
+
+        dfs_inference_score(forall(x, imp(pianist(x),trumpeter(x))),and(forall(x,imp(pianist(x), singer(x))), forall(x,imp(singer(x), trumpeter(x)))),Ms, Ir),
+        Ir is 1.0,
 
         dfs_localist_word_vectors(WVs),
         dfs_sentence_semantics_mappings(WVs,Ms,Mappings),
