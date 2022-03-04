@@ -1,4 +1,4 @@
-:- use_module('../src/dfs_main.pl').
+:- use_module('../../../dfs-tools/src/dfs_main.pl').
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% World Specification %%%
@@ -30,10 +30,17 @@ person('nat').
 constraint(forall(x,or(or(singer(x),trumpeter(x)),pianist(x)))).
 
 %There are no empty domains
-constraint(exists(x,exists(y,exists(z, and(pianist(x), and(trumpeter(y), singer(z))))))).
-
+constraint(exists(x,pianist(x))).
+constraint(exists(x,trumpeter(x))).
+constraint(exists(x,singer(x))).
 
 %%% Probabilistic constraints %%%
+
+% These constraints are to boost the prevalence of non-proper subsets
+% If Chet is a singer, he's more likely to be also a trumpeter by a factor 0.5
+probability(pianist(P), singer(P), 0.9) :- person(P).
+probability(singer(P), pianist(P), 0.9) :- person(P).
+
 
 probability(_,top,0.5).
 
@@ -139,9 +146,13 @@ qtf_semantics([H|T], or(Conj1,Conjuncts), 'o') :-
         qtf_semantics(T, Conjuncts, 'o').
 
 
-gen_data(SentOut, SpaceOut, Size) :-
-        dfs_sample_models(Size, Ms),
+gen_data(SentOut, SpaceOut, Size, Threads) :-
+        dfs_sample_models_mt(Threads, Size, Ms),
         % One cannot read and sleep at the same time
+
+        dfs_inference_score(exists(x, and(singer(x),neg(trumpeter(x)))), and(forall(x,imp(trumpeter(x),pianist(x))),forall(x,imp(pianist(x),singer(x)))), Ms, Inf),
+        Inf < 1.0,
+
         foreach(person(Person),
                 dfs_prior_probability(or(or(singer(Person),trumpeter(Person)),pianist(Person)),Ms,1)),
 
@@ -152,5 +163,4 @@ gen_data(SentOut, SpaceOut, Size) :-
         dfs_sentence_semantics_mappings(WVs,Ms,Mappings),
         mesh_write_set(Mappings, SentOut),
         dfs_models_to_matrix(Ms,MM),
-        dfs_pprint_matrix(MM),
         dfs_write_matrix(MM, SpaceOut).
