@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import ccobra
 import pandas as pd
-import dfs_utils as dfs
+import dfs
 from functools import reduce
 from matplotlib_venn import venn3, venn3_circles
 import itertools as it
 import numpy as np
-#np.set_printoptions(precision=4, suppress=True)
 
 import matplotlib as mpl
 import descartes
@@ -20,7 +19,7 @@ def inference_matrix(data, types, correct_responses):
     fig = plt.figure(figsize=(1,1), dpi=180)
     ax = fig.add_subplot(111)
     mat = ax.matshow(data.T, cmap=plt.get_cmap('RdBu'), aspect='auto')
-    cb = fig.colorbar(mat, location='bottom', shrink=0.44, ticks=[-1, 0, 1])
+    cb = fig.colorbar(mat, location='top', shrink=0.35, ticks=[-1, 0, 1])
     cb.ax.tick_params(labelsize=32)
 
     ax.set_xticks(np.arange(data.shape[0]))
@@ -158,7 +157,3 @@ def createWith(probs):
     ax.plot()
     plt.savefig('venn_test.pdf')
     plt.show()
-
-numEvents = 3
-norm = mpl.colors.Normalize(-1, 1)
-createWith(norm(np.array([-0.2, -0.5, -0.75, -0.5, 0.6, 0.8, 0.8, 1]))) # doesn't have to actually be legit values
