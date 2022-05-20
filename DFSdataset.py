@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from itertools import combinations, product
+from itertools import combinations, product, chain
 from functools import reduce
 import dfs
 import ccobra
@@ -10,9 +10,7 @@ import re
 import csv
 import sys
 
-def makeDiscourse(p1, p2, c): #stupid call by reference
-    discourse = ' <EOS> '.join([' '.join(p1), ' '.join(p2), ' '.join(c)])
-    return ''.join((discourse, ' <EOS>'))
+# TODO: Some not /Some_not etc.
 
 def read_mesh(file):
         out = []
@@ -31,14 +29,34 @@ def read_mesh(file):
                     out.append((ex_name, torch.DoubleTensor(ex_target)))
         return out
 
-class DFSDataset(Dataset):
-    """Class that takes a mesh file and produces a pytorch dataset.
-        repetition controls how many times each example is repeated in the dataset."""
+class Syllogism:
+    def __init__(self, p1, p2, c):
+        self.premises = [p1, p2]
+        self.conclusion = c
+        self.full_form = [p1, p2, c]
+        self.task = ccobra.syllogistic.encode_task(self.premises)
+        self.conclusion_type = ccobra.syllogistic.encode_response(c, self.premises)
 
-    def __init__(self, mesh_file):
+    def is_valid(self):
+        if self.conclusion in ccobra.syllogistic.SYLLOGISTIC_FOL_RESPONSES:
+            return True
+        else:
+            False
+
+    def __repr__(self):
+        return str(self.full_form)
+
+class DFSDataset(Dataset):
+    """Class that takes a mesh file and produces a pytorch dataset."""
+    def __init__(self, mesh_file, delim):
         self.pairs, self.sen_sem_dict = self.generate_semantics(read_mesh(mesh_file))
         self.data = self.generate_IO_pairs()
+        self.delim = delim
         self.word2id, self.id2word = self.genVocab(self.data)
+
+    def makeDiscourse(self, p1, p2, c): #stupid call by reference
+        discourse = f' {self.delim} '.join([' '.join(p1), ' '.join(p2), ' '.join(c)])
+        return ''.join((discourse, f' {self.delim}'))
 
     def generate_semantics(self, sent_raw):
         """
@@ -54,11 +72,11 @@ class DFSDataset(Dataset):
         sen_sem_dict = {' '.join(tup[0]) : tup[1] for tup in sent_notaut}
         return pairs_unique, sen_sem_dict
 
-    def getConclusionSem(self, p1, p2, conclusion):
+    def getConclusionSem(self, syllogism):
         """
         Returns the semantics for a given conclusion. Need the premises to find the right conclusion template.
         """
-        resp = ccobra.syllogistic.decode_response(conclusion, (p1, p2))[0]
+        resp = syllogism.conclusion
         if resp[0] == 'NVC':
             return resp, torch.zeros((10000))
         else:
@@ -75,10 +93,11 @@ class DFSDataset(Dataset):
         for idx, pair in enumerate(self.pairs): #this is slow af but its only preprocessing anyway
             p1, p2 = pair[0], pair[1] #p1 is a tuple of (list, vector)
             for response in ccobra.syllogistic.RESPONSES:
-                conclusion = self.getConclusionSem(p1[0], p2[0], response)
+                response = ccobra.syllogistic.decode_response(response, (p1[0], p2[0]))[0]
+                syllogism = Syllogism(p1[0], p2[0], response)
+                conclusion = self.getConclusionSem(syllogism)
                 target_semantics = reduce(dfs.conjunction, [p1[1], p2[1], conclusion[1]])
-                target_discourse = makeDiscourse(p1[0], p2[0], conclusion[0])
-                all_io_pairs.append((target_discourse, target_semantics))
+                all_io_pairs.append((syllogism, target_semantics))
         return all_io_pairs
 
     def genVocab(self, raw):
@@ -87,10 +106,13 @@ class DFSDataset(Dataset):
         """
         word2id = {}
         id2word = []
-        vocab = set(' '.join([name for name, label in raw]).split())
+        vocab = set(' '.join([word for syll, sem in raw for word in list(chain(*syll.full_form))]).split()) #wtf am i even doing here
+        print(vocab)
         for i, word in enumerate(vocab):
             word2id[word] = i
             id2word.append(word)
+        id2word.append(self.delim)
+        word2id[self.delim] = len(vocab)
         return (word2id, id2word)
 
     def make_one_hot(self, sentence):
@@ -98,8 +120,8 @@ class DFSDataset(Dataset):
         Generates a one-hot encoded vector from a list of strings. Strings must be in self.vocab
         """
         one_hot = torch.zeros(len(sentence), len(self.word2id))
-        for i in range(len(sentence)):
-            one_hot[i][self.word2id[sentence[i]]] = 1
+        for i, word in enumerate(sentence):
+            one_hot[i][self.word2id[word]] = 1
         return one_hot
 
     def translate_one_hot(self, tensor):
@@ -112,6 +134,11 @@ class DFSDataset(Dataset):
             sent.append(self.id2word[idx])
         return sent
 
+    def decode_training_item(self, item):
+        idx = [i for i,word in enumerate(item) if word == self.delim]
+        sentences = [item[s+1:e] for s,e in zip([-1] + idx, idx + [len(item)])][:-1]
+        return Syllogism(*sentences)
+
     def __len__(self):
         return len(self.data)
 
@@ -121,13 +148,14 @@ class DFSDataset(Dataset):
         First element is a one-hot-encoded input sentence of [len, vocabsize]
         Second element is a DFS vector of [len, model_size]
         """
-        sentence, semantics = self.data[idx]
-        split_sentence = sentence.split()
-        return self.make_one_hot(split_sentence), semantics.repeat(len(split_sentence),1)
+        syllogism, semantics = self.data[idx]
+        full_discourse = self.makeDiscourse(*syllogism.full_form).split()
+        return self.make_one_hot(full_discourse), semantics.repeat(len(full_discourse),1)
 
 
-test = DFSDataset('dfs_data/syllogism_10k.mesh')
+test = DFSDataset('dfs_data/syllogism_10k.mesh', '<EOS>')
 item1 = test[0]
+#test.decode_training_item(item1)
 
 for idx, ex in enumerate(test):
-    print(test.translate_one_hot(ex[0]), dfs.prob(ex[1][0]))
+    print(test.decode_training_item(test.translate_one_hot(ex[0])), dfs.prob(ex[1][0]))
