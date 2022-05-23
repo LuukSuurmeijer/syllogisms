@@ -151,11 +151,3 @@ class DFSDataset(Dataset):
         syllogism, semantics = self.data[idx]
         full_discourse = self.makeDiscourse(*syllogism.full_form).split()
         return self.make_one_hot(full_discourse), semantics.repeat(len(full_discourse),1)
-
-
-test = DFSDataset('dfs_data/syllogism_10k.mesh', '<EOS>')
-item1 = test[0]
-#test.decode_training_item(item1)
-
-for idx, ex in enumerate(test):
-    print(test.decode_training_item(test.translate_one_hot(ex[0])), dfs.prob(ex[1][0]))
