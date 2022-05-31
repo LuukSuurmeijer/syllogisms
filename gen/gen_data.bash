@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This file is the pipeline generates a full DFS space + sentences and a subset-reduced Space + sentences 
+# This file is the pipeline generates a full DFS space + sentences and a subset-reduced Space + sentences
 
 # 1: Original world file
 # 2: Original sentence file
@@ -16,8 +16,8 @@ swipl -q -f syllogism_space.pl -g "gen_data('$2', '$1', $3, $4), halt."
 
 # Reduce dimensionality of full world
 
-python ../../dfs-tools/utils/dfs_msubset.py $1 $5 $7 2000
+python dfs_msubset.py $1 $5 $7 5000
 
 # Load into dfs-tool, regenerate sentences
-
+# This throws an error atm but it still works?
 swipl -q -f syllogism_space.pl -g "gen_data('$5', '$6'), halt."

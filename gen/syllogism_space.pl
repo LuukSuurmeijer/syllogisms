@@ -1,4 +1,4 @@
-:- use_module('../../dfs-tools/src/dfs_main.pl').
+:- use_module('dfs-tools/src/dfs_main.pl').
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% World Specification %%%
@@ -13,8 +13,6 @@ property(singer(Person)) :- person(Person).
 property(trumpeter(Person)) :- person(Person).
 property(pianist(Person)) :- person(Person).
 
-
-
 %%% Constant instantiations %%%
 
 person('chet').
@@ -26,21 +24,20 @@ person('nat').
 
 %%% Hard constraints %%%
 
-% Everyone is *something*, of course you can be multiple things
-constraint(forall(x,or(or(singer(x),trumpeter(x)),pianist(x)))).
-
 %There are no empty domains
 constraint(exists(x,pianist(x))).
 constraint(exists(x,trumpeter(x))).
 constraint(exists(x,singer(x))).
 
+% Everyone is *something*, of course you can be multiple things
+%%% Deze constraint doet niks meer in de nieuwe versie
+constraint(forall(x,or(or(singer(x),trumpeter(x)),pianist(x)))).
+
 %%% Probabilistic constraints %%%
 
 % These constraints are to boost the prevalence of non-proper subsets
-% If Chet is a singer, he's more likely to be also a trumpeter by a factor 0.5
 probability(pianist(P), singer(P), 0.9) :- person(P).
 probability(singer(P), pianist(P), 0.9) :- person(P).
-
 
 probability(_,top,0.5).
 
@@ -115,7 +112,7 @@ build_terms(Pred,[S|Ss],'o',A,[Sem0|T]) :- !,
         build_terms(Pred,Ss,'o',A,T).
 
 %%% Premis %%%
-% Starts the process of finding the correct semantics for each type of premiss
+% Starts the process of finding the correct semantics for each type of premis
 premiss([H|T], Result, 'i') :-
         qtf_semantics([H|T], Result, 'i').
 premiss([H|T], Result, 'a') :-
@@ -148,16 +145,19 @@ qtf_semantics([H|T], or(Conj1,Conjuncts), 'o') :-
         qtf_semantics(T, Conjuncts, 'o').
 
 
-% this function samples the meaning space and writes the sentence/semantics pairs
+%%% Generate Data %%%
 gen_data(SentOut, SpaceOut, Size, Threads) :-
         dfs_sample_models_mt(Threads, Size, Ms),
         % check whether the constraints are satisfied
+        % Are there non-proper subsets?
         dfs_inference_score(exists(x, and(singer(x),neg(trumpeter(x)))), and(forall(x,imp(trumpeter(x),pianist(x))),forall(x,imp(pianist(x),singer(x)))), Ms, Inf),
         Inf < 1.0,
-        foreach(person(Person),
-                dfs_prior_probability(or(or(singer(Person),trumpeter(Person)),pianist(Person)),Ms,1)),
+        % Is everybody something?
+        dfs_prior_probability(forall(x, or(or(singer(x),trumpeter(x)),pianist(x))),Ms,1),
+        % Check syllogism for sanity
         dfs_inference_score(forall(x, imp(pianist(x),trumpeter(x))),and(forall(x,imp(pianist(x), singer(x))), forall(x,imp(singer(x), trumpeter(x)))),Ms, Ir),
         Ir is 1.0,
+
         dfs_localist_word_vectors(WVs), %get localist vectors for each word in the grammar
         dfs_sentence_semantics_mappings(WVs,Ms,Mappings), %generate the mappings from word vectors to semantics for each sentence
         mesh_write_set(Mappings, SentOut),
@@ -168,14 +168,11 @@ gen_data(SpaceIn, SentOut) :-
         dfs_read_matrix(SpaceIn, MM),
         dfs_matrix_to_models(MM, Ms),
         % check whether the constraints are satisfied
-        dfs_inference_score(exists(x, and(singer(x),neg(trumpeter(x)))), and(forall(x,imp(trumpeter(x),pianist(x))),forall(x,imp(pianist(x),singer(x)))), Ms, Inf),
-        Inf < 1.0,
-        foreach(person(Person),
-        %        dfs_prior_probability(or(or(singer(Person),trumpeter(Person)),pianist(Person)),Ms,1)),
-        dfs_inference_score(forall(x, imp(pianist(x),trumpeter(x))),and(forall(x,imp(pianist(x), singer(x))), forall(x,imp(singer(x), trumpeter(x)))),Ms, Ir),
-        Ir is 1.0,
+        %dfs_inference_score(exists(x, and(singer(x),neg(trumpeter(x)))), and(forall(x,imp(trumpeter(x),pianist(x))),forall(x,imp(pianist(x),singer(x)))), Ms, Inf),
+        %Inf < 1.0,
+        %dfs_prior_probability(forall(x, or(or(singer(x),trumpeter(x)),pianist(x))),Ms,1),
+        %dfs_inference_score(forall(x, imp(pianist(x),trumpeter(x))),and(forall(x,imp(pianist(x), singer(x))), forall(x,imp(singer(x), trumpeter(x)))),Ms, Ir),
+        %Ir is 1.0,
         dfs_localist_word_vectors(WVs), %get localist vectors for each word in the grammar
         dfs_sentence_semantics_mappings(WVs,Ms,Mappings), %generate the mappings from word vectors to semantics for each sentence
         mesh_write_set(Mappings, SentOut).
-        dfs_models_to_matrix(Ms,MM),
-        dfs_write_matrix(MM, SpaceOut).
