@@ -45,14 +45,14 @@ def find_inference(x):
         for r in ccobra.syllogistic.RESPONSES[:-1]:
             resp = ccobra.syllogistic.decode_response(r, (x['premise1'], x['premise2']))
             conclusion_sem = sen_sem_dict[' '.join(resp[0])]
-            if dfs.inferenceScore(conclusion_sem, dfs.conjunction(x['sem1'],x['sem2'])) == 1:
+            if dfs.inference_score(conclusion_sem, dfs.conjunction(x['sem1'], x['sem2'])) == 1:
                 score = -1
                 break
         if not score:
             score = 1
 
     else:
-        score = dfs.inferenceScore(conclusion_sem, dfs.conjunction(x['sem1'],x['sem2']))
+        score = dfs.inference_score(conclusion_sem, dfs.conjunction(x['sem1'], x['sem2']))
 
     return score
 

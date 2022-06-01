@@ -6,9 +6,8 @@ import dfs
 import ccobra
 import re
 
+# TODO: Some not /Some_not in Syllogism class clashes
 
-# TODO: Some not /Some_not etc.
-# TODO: Make epsilon and observation size arguments or global constants
 
 def read_mesh(file):
     out = []
@@ -33,11 +32,12 @@ class Syllogism:
         self.premises = [p1, p2]
         self.conclusion = c
         self.full_form = [p1, p2, c]
-        self.task = ccobra.syllogistic.encode_task(self.premises)
-        self.conclusion_type = ccobra.syllogistic.encode_response(c, self.premises)
+        if p2 != [] and c != []:
+            self.task = ccobra.syllogistic.encode_task(self.premises)
+            self.conclusion_type = ccobra.syllogistic.encode_response(c, self.premises)
 
     def is_valid(self):
-        if self.conclusion in ccobra.syllogistic.SYLLOGISTIC_FOL_RESPONSES:
+        if self.conclusion_type in ccobra.syllogistic.SYLLOGISTIC_FOL_RESPONSES[self.task]:
             return True
         else:
             return False
@@ -98,11 +98,19 @@ class Vocabulary:
 class DFSdataset(Dataset):
     """Class that takes a mesh file and produces a pytorch dataset."""
 
-    def __init__(self, mesh_file, delim):
-        self.pairs, self.sen_sem_dict = self.generate_semantics(read_mesh(mesh_file))
-        self.data = self.generate_IO_pairs()
+    def __init__(self, mesh_data, delim):
+        if isinstance(mesh_data, str):
+            pairs, self.sen_sem_dict, self.obs_size = self.generate_semantics(read_mesh(mesh_data))
+            self.data = self.generate_IO_pairs(pairs)
+        else:
+            # if data is not read from a meshfile, it is assumed to be given as a tuple of
+            # ( sent_sem_pairs, sent_sem_dict)
+            data, self.sen_sem_dict = mesh_data
+            self.data = [(Syllogism(tup[0], [], []), tup[1]) for tup in data]
+            self.obs_size = len(list(self.sen_sem_dict.values())[0])
         self.delim = delim
-        self.vocab = Vocabulary(self.data, self.delim)
+        self.sen_sem_dict['NVC'] = torch.zeros(self.obs_size) + 1e-08
+        self.vocab = Vocabulary(self.data, self.delim, phrasal=False)
 
     def make_discourse(self, p1, p2, c):  # stupid call by reference
         discourse = f' {self.delim} '.join([' '.join(p1), ' '.join(p2), ' '.join(c)])
@@ -122,7 +130,7 @@ class DFSdataset(Dataset):
         # remove all doubles that do not contain distinct A, B and C
         pairs_unique = [double for double in pairs if len({*double[0][0][1:], *double[1][0][1:]}) == 3]
         sen_sem_dict = {' '.join(tup[0]): tup[1] for tup in sent_notaut}
-        return pairs_unique, sen_sem_dict
+        return pairs_unique, sen_sem_dict, len(pairs_unique[0][0][1])
 
     def get_conclusionsem(self, syllogism):
         """
@@ -130,12 +138,12 @@ class DFSdataset(Dataset):
         """
         resp = syllogism.conclusion
         if resp[0] == 'NVC':
-            return resp, torch.zeros(300) + 1e-08
+            return resp, torch.zeros(self.obs_size) + 1e-08
         else:
             conclusion_sem = self.sen_sem_dict[' '.join(resp)]
             return resp, torch.DoubleTensor(conclusion_sem)
 
-    def generate_IO_pairs(self):
+    def generate_IO_pairs(self, pairs):
         """
         Generates the data, that is, triples of 2 premises with any conclusion with the semantics corresponding
         to the conjunction of their independent semantic vectors.
@@ -143,7 +151,7 @@ class DFSdataset(Dataset):
         My data: 384 premise pairs x 9 conclusions = 3456 unique exampels
         """
         all_io_pairs = []
-        for idx, pair in enumerate(self.pairs):  # this is slow af but its only preprocessing anyway
+        for idx, pair in enumerate(pairs):  # this is slow af but its only preprocessing anyway
             p1, p2 = pair[0], pair[1]  # p1 is a tuple of (list, vector)
             for response in ccobra.syllogistic.RESPONSES:
                 response = ccobra.syllogistic.decode_response(response, (p1[0], p2[0]))[0]
@@ -153,7 +161,7 @@ class DFSdataset(Dataset):
                 # unlikely event
                 target_semantics = reduce(dfs.conjunction, [p1[1], p2[1], conclusion[1]])
                 if not target_semantics.any():
-                    target_semantics = torch.zeros(300) + 1e-08
+                    target_semantics = torch.zeros(self.obs_size) + 1e-08
                 all_io_pairs.append((syllogism, target_semantics))
         return all_io_pairs
 
@@ -173,12 +181,12 @@ class DFSdataset(Dataset):
         """
         syllogism, semantics = self.data[idx]
         full_discourse = self.make_discourse(*syllogism.full_form).split()
-        return self.vocab.make_one_hot(full_discourse), semantics.repeat(len(full_discourse), 1)
+        return self.vocab.make_one_hot(full_discourse).double(), semantics.repeat(len(full_discourse), 1).double()
 
 
 class DFSdatasetPhrase(DFSdataset):
-    def __init__(self, mesh_file, delim):
-        super().__init__(mesh_file, delim)
+    def __init__(self, mesh_data, delim):
+        super().__init__(mesh_data, delim)
         self.vocab = Vocabulary(self.data, '', phrasal=True)
 
     def make_discourse(self, p1, p2, c):
@@ -189,4 +197,3 @@ class DFSdatasetPhrase(DFSdataset):
         syllogism, semantics = self.data[idx]
         full_discourse = self.make_discourse(*syllogism.full_form)
         return self.vocab.make_one_hot(full_discourse).double(), semantics.repeat(len(full_discourse), 1).double()
-
