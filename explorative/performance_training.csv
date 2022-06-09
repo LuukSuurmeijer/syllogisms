@@ -1,0 +1,25 @@
+sent,cosine,loss,model_inf,gold_inf,task/conclusion,valid,prob
+All trumpeters pianists <EOS> All trumpeters singers <EOS> All pianists singers <EOS>,0.8256178119817567,0.01155353574423146,0.5143604377317239,-0.5956873315363882,"('AA4', 'Aac')",False,0.02666666666666667
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some not pianists singers <EOS>,0.5593640429159634,0.027213850939799906,0.4467917624869673,0.5956873315363881,"('AA4', 'Ica')",True,0.04666666666666667
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some singers pianists <EOS>,0.9886518478666348,0.02473717594228659,0.9978189873034637,1.0,"('AA4', 'Ica')",True,0.07333333333333333
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some singers pianists <EOS>,0.9886518478666348,0.02473717594228659,0.9978189873034637,1.0,"('AA4', 'Ica')",True,0.07333333333333333
+All trumpeters pianists <EOS> All trumpeters singers <EOS> NVC <EOS>,0.9440844146664193,0.013458861428152164,9.265856346779857e-09,-5.329067710690243e-07,"('AA4', 'NVC')",False,7.333333288765213e-10
+All trumpeters pianists <EOS> All pianists singers <EOS> All singers trumpeters <EOS>,0.2556799850571871,0.013081699400723998,3.308722483299335e-24,-0.5535714285714286,"('AA1', 'Aca')",False,9.99999993922529e-09
+All trumpeters pianists <EOS> All pianists singers <EOS> All singers trumpeters <EOS>,0.2556799850571871,0.013081699400723998,3.308722483299335e-24,-0.5535714285714286,"('AA1', 'Aca')",False,9.99999993922529e-09
+All trumpeters pianists <EOS> All pianists singers <EOS> All trumpeters singers <EOS>,0.8256178119817567,0.01110906460800477,0.5143604377317239,0.22820823244552058,"('AA1', 'Aac')",True,0.02666666666666667
+All trumpeters pianists <EOS> All trumpeters singers <EOS> No pianists singers <EOS>,0.2556799850571871,0.013553151934272565,3.308722483299335e-24,-1.0,"('AA4', 'Eac')",False,9.99999993922529e-09
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some singers pianists <EOS>,0.9886518478666348,0.02473717594228659,0.9978189873034637,1.0,"('AA4', 'Ica')",True,0.07333333333333333
+All trumpeters pianists <EOS> All pianists singers <EOS> All trumpeters singers <EOS>,0.8256178119817567,0.01110906460800477,0.5143604377317239,0.22820823244552058,"('AA1', 'Aac')",True,0.02666666666666667
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some pianists singers <EOS>,0.9440844146664195,0.025549905917402572,0.9999125607515684,1.0,"('AA4', 'Iac')",True,0.07333333333333333
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some singers pianists <EOS>,0.9886518478666348,0.02473717594228659,0.9978189873034637,1.0,"('AA4', 'Ica')",True,0.07333333333333333
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some not pianists singers <EOS>,0.5593640429159634,0.027213850939799906,0.4467917624869673,0.5956873315363881,"('AA4', 'Ica')",True,0.04666666666666667
+All trumpeters pianists <EOS> All pianists singers <EOS> Some trumpeters singers <EOS>,0.8256178119817567,0.011553535744231458,0.5143604377317239,-0.06655844155844172,"('AA1', 'Iac')",True,0.02666666666666667
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some not singers pianists <EOS>,0.7624324936753446,0.019820075030630345,0.5504229371694997,-0.2273351648351649,"('AA4', 'Ica')",True,0.04
+All trumpeters pianists <EOS> All trumpeters singers <EOS> NVC <EOS>,0.9440844146664193,0.013458861428152164,9.265856346779857e-09,-5.329067710690243e-07,"('AA4', 'NVC')",False,7.333333288765213e-10
+All trumpeters pianists <EOS> All trumpeters singers <EOS> No singers pianists <EOS>,0.2682703797193877,0.014024604467821132,1.6543612416496675e-24,-1.0,"('AA4', 'Eca')",False,9.99999993922529e-09
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some not singers pianists <EOS>,0.7624324936753446,0.019820075030630345,0.5504229371694997,-0.2273351648351649,"('AA4', 'Ica')",True,0.04
+All trumpeters pianists <EOS> All trumpeters singers <EOS> Some singers pianists <EOS>,0.9886518478666348,0.02473717594228659,0.9978189873034637,1.0,"('AA4', 'Ica')",True,0.07333333333333333
+All trumpeters pianists <EOS> All trumpeters singers <EOS> No singers pianists <EOS>,0.2682703797193877,0.014024604467821132,1.6543612416496675e-24,-1.0,"('AA4', 'Eca')",False,9.99999993922529e-09
+All trumpeters pianists <EOS> All trumpeters singers <EOS> No singers pianists <EOS>,0.2682703797193877,0.014024604467821132,1.6543612416496675e-24,-1.0,"('AA4', 'Eca')",False,9.99999993922529e-09
+All trumpeters pianists <EOS> All pianists singers <EOS> All trumpeters singers <EOS>,0.8256178119817567,0.01110906460800477,0.5143604377317239,0.22820823244552058,"('AA1', 'Aac')",True,0.02666666666666667
+All trumpeters pianists <EOS> All pianists singers <EOS> Some trumpeters singers <EOS>,0.8256178119817567,0.011553535744231458,0.5143604377317239,-0.06655844155844172,"('AA1', 'Iac')",True,0.02666666666666667
