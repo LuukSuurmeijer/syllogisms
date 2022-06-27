@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 
+def zero_error_radius(input, gold, radius):
+    """Only for range of 0-1 for now"""
+    new_t = torch.where(input-gold<(1-radius), gold, input)
+    return new_t
 
 class ComprehensionModel(nn.Module):
     def __init__(self, vocab_size, hidden_dim, observation_size, n_layers=1, type='RNN'):
@@ -22,7 +26,6 @@ class ComprehensionModel(nn.Module):
 
         # The linear layer that maps from hidden state space to tag space
         self.hidden2tag = nn.Linear(hidden_dim, observation_size) #dim: (hidden_dim, observation_size) linear
-        self.double()
 
     def forward(self, sentence, prev_state):
         #sentence is a torch one hot tensor of (bs, seq_len, vocab_size)

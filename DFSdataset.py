@@ -5,6 +5,7 @@ from functools import reduce
 import dfs
 import ccobra
 import re
+import sys
 
 # TODO: Some not /Some_not in Syllogism class clashes
 
@@ -51,7 +52,8 @@ class Syllogism:
 
 class Vocabulary:
     def __init__(self, data, delim, phrasal=False):
-        if phrasal:
+        self.phrasal = phrasal
+        if self.phrasal:
             sentences = list(chain(*[sent for sent, sem in data]))
             self.v = set([' '.join(sent) for sent in sentences])
         else:
@@ -76,6 +78,11 @@ class Vocabulary:
         """
         Generates a one-hot encoded vector from a list of strings. Strings must be in self.vocab
         """
+        #if self.phrasal:
+        #    length = 1
+        #    sentence = [sentence[0]]
+        #else:
+        #    length = len(sentence)
         one_hot = torch.zeros(len(sentence), len(self.word2id))
         for i, word in enumerate(sentence):
             one_hot[i][self.word2id[word]] = 1
@@ -94,10 +101,7 @@ class Vocabulary:
     def __len__(self):
         return len(self.word2id)
 
-
 class DFSdataset(Dataset):
-    """Class that takes a mesh file and produces a pytorch dataset."""
-
     def __init__(self, mesh_data, delim):
         if isinstance(mesh_data, str):
             pairs, self.sen_sem_dict, self.obs_size = self.generate_semantics(read_mesh(mesh_data))
@@ -105,16 +109,12 @@ class DFSdataset(Dataset):
         else:
             # if data is not read from a meshfile, it is assumed to be given as a tuple of
             # ( sent_sem_pairs, sent_sem_dict)
+            # TODO: How to represent single premises that do not constitute syllogisms
             data, self.sen_sem_dict = mesh_data
-            self.data = [(Syllogism(tup[0], [], []), tup[1]) for tup in data]
+            self.data = [(tup[0], tup[1]) for tup in data]
             self.obs_size = len(list(self.sen_sem_dict.values())[0])
         self.delim = delim
-        self.sen_sem_dict['NVC'] = torch.zeros(self.obs_size) + 1e-08
-        self.vocab = Vocabulary(self.data, self.delim, phrasal=False)
-
-    def make_discourse(self, p1, p2, c):  # stupid call by reference
-        discourse = f' {self.delim} '.join([' '.join(p1), ' '.join(p2), ' '.join(c)])
-        return ''.join((discourse, f' {self.delim}'))
+        self.sen_sem_dict['NVC'] = torch.zeros(self.obs_size) + 1/self.obs_size
 
     @staticmethod
     def generate_semantics(sent_raw):
@@ -138,7 +138,7 @@ class DFSdataset(Dataset):
         """
         resp = syllogism.conclusion
         if resp[0] == 'NVC':
-            return resp, torch.zeros(self.obs_size) + 1e-08
+            return resp, torch.zeros(self.obs_size) + 1/self.obs_size
         else:
             conclusion_sem = self.sen_sem_dict[' '.join(resp)]
             return resp, torch.DoubleTensor(conclusion_sem)
@@ -148,7 +148,9 @@ class DFSdataset(Dataset):
         Generates the data, that is, triples of 2 premises with any conclusion with the semantics corresponding
         to the conjunction of their independent semantic vectors.
         list of 2-tuples where first element is string of the full discourse and second element a semantic vector.
-        My data: 384 premise pairs x 9 conclusions = 3456 unique exampels
+        My data: 384 premise pairs x 9 conclusions = 3456 unique examples
+
+            pairs: list of premise-pairs and DFS-vectors
         """
         all_io_pairs = []
         for idx, pair in enumerate(pairs):  # this is slow af but its only preprocessing anyway
@@ -161,23 +163,47 @@ class DFSdataset(Dataset):
                 # unlikely event
                 target_semantics = reduce(dfs.conjunction, [p1[1], p2[1], conclusion[1]])
                 if not target_semantics.any():
-                    target_semantics = torch.zeros(self.obs_size) + 1e-08
+                    target_semantics = torch.zeros(self.obs_size) + 1/self.obs_size
                 all_io_pairs.append((syllogism, target_semantics))
         return all_io_pairs
 
     def decode_training_item(self, item):
+        """
+            Turns a sequence of words/phrases into a Syllogism object. In this class cause of self.delim
+
+            item: the triple of sentences to decode as a list of lists of strings
+        """
+        #TODO: What if delim = None or empty string? Then this does not work.
         idx = [i for i, word in enumerate(item) if word == self.delim]
         sentences = [item[s + 1:e] for s, e in zip([-1] + idx, idx + [len(item)])][:-1]
-        return Syllogism(*sentences)
+        # ccobra uses space for 'some not' quantifier, terrible encoding, so here is some terrible code to fix it
+        for sent in sentences:
+            if 'not' in sent:
+                sent.remove('not')
+                sent[0] = ' '.join([sent[0], 'not'])
+        return sentences
 
     def __len__(self):
         return len(self.data)
+
+class DFSdatasetWord(DFSdataset):
+    """Class that takes a mesh file and produces a pytorch dataset."""
+
+    def __init__(self, mesh_data, delim):
+        super().__init__(mesh_data, delim)
+        self.vocab = Vocabulary(self.data, self.delim, phrasal=False)
+
+    def make_discourse(self, p1, p2, c):  # stupid call by reference
+        discourse = f' {self.delim} '.join([' '.join(p1), ' '.join(p2), ' '.join(c)])
+        return ''.join((discourse, f' {self.delim}'))
 
     def __getitem__(self, idx):
         """
         Yields the example at index `idx`. An example is a 2-tuple.
         First element is a one-hot-encoded input sentence of [len, vocabsize]
         Second element is a DFS vector of [len, model_size]
+
+            idx: index of self.data to return
         """
         syllogism, semantics = self.data[idx]
         full_discourse = self.make_discourse(*syllogism.full_form).split()

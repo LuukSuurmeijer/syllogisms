@@ -1,7 +1,16 @@
 from dfs import *
+import torch
+import sys
+from ComprehensionModel import *
+
+def delete_multiple_lines(n):
+    """Delete the last line in the STDOUT."""
+    for _ in range(n):
+        sys.stdout.write("\x1b[1A")  # cursor up one line
+        sys.stdout.write("\x1b[2K")  # delete the last line
 
 #TODO: Zero-error-radius ?
-def train(model, dataloader, criterion, optimizer, stats_dict, log_interval=5):
+def train(model, dataloader, criterion, optimizer, stats_dict, radius, log_interval):
     model.train()
     running_loss = 0.0
 
@@ -13,7 +22,12 @@ def train(model, dataloader, criterion, optimizer, stats_dict, log_interval=5):
         prev_state = model.init_state(b_size=sent.shape[0])  # reset RNN state
 
         pred, hidden_seq = model(sent, prev_state)  # forward pass
-        #pred = pred.to(torch.double)
+        pred = zero_error_radius(pred, semantics, radius)
+        #if inference_score(semantics[0][-1], pred[0][-1]) < 1.:
+         #   print(pred[0][-1])
+          #  print(semantics[0][-1])
+
+        #assert torch.equal(pred, semantics)
 
         loss = criterion(pred, semantics)  # compute loss
         # Gather statistics
@@ -28,8 +42,9 @@ def train(model, dataloader, criterion, optimizer, stats_dict, log_interval=5):
         optimizer.step()  # update weights
 
         if log_interval and (id % log_interval) == 0:
-            print("Iteration: {}/{}, Loss: {:8.4f}".format(
+            print('\r' + "Iteration: {}/{}, Loss: {:8.4f}".format(
                 id+1, len(dataloader),
                            running_loss / float(log_interval)))
+            #delete_multiple_lines(1)
             running_loss = 0
     return model

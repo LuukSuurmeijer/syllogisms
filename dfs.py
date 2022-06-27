@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+import torch
 
 def prior_prob(p1):
-    return sum(p1) / len(p1)
+    return torch.sum(p1) / len(p1)
 
 
 def joint_prob(p1, p2):
@@ -11,7 +12,7 @@ def joint_prob(p1, p2):
     #if p1 == p2:
     #    return prior_prob(p1)
     #else:
-    return prior_prob(np.multiply(p1, p2))
+    return prior_prob(torch.multiply(p1, p2))
 
 
 def conditional_prob(p1, p2):
